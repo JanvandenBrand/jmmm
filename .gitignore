@@ -1,5 +1,9 @@
+# Data
+
+# Package creation
 .Rproj.user
 .Rhistory
 .Rdata
 .httr-oauth
 .DS_Store
+generate_package.R
