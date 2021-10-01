@@ -94,40 +94,28 @@ plot_predictions <- function (predictions,
   # FIX: Return marker data to the orginal scale
   # check input
   if((length(subject) == 1) == FALSE) {
-    stop("Set `subject` to select one subjects")
+    stop("Set `subject` to select a single subject")
   }
-
   # detect binary outcomes
   is_binary <- sapply(outcomes, function(x, ...) {
     all(
       predictions %>%
-        unnest(data) %>%
+        dplyr::select(all_of(id), data) %>%
+        tidyr::unnest(data) %>%
         distinct(get(x)) %>%
         unlist() %>%
         sort() == c(0, 1)
     )
   })
-  # Apply filter at subject level
-  # if (is.null(subject)) {
-  # # Select marker data
-  # markers <- predictions %>%
-  #   dplyr::select(all_of(id), data) %>%
-  #   unnest(data)
-  # # Select prediction data
-  # pred <- predictions %>%
-  #   dplyr::select(all_of(id), prediction) %>%
-  #   unnest(prediction)
-  # } else {
-  # Select marker data
   markers <- predictions %>%
     dplyr::select(all_of(id), data) %>%
-    filter(get(id) == subject) %>%
-    unnest(data)
+    dplyr::filter(all_of(id) == subject) %>%
+    tidyr::unnest(data)
   # Select prediction data
   pred <- predictions %>%
     dplyr::select(all_of(id), prediction) %>%
-    filter(get(id) == subject) %>%
-    unnest(prediction)
+    dplyr::filter(all_of(id) == subject) %>%
+    tidyr::unnest(prediction)
   # }
   # set-up time axis
   if (nrow(markers) == 0) {
@@ -139,20 +127,16 @@ plot_predictions <- function (predictions,
   }
   # Pivot the data for plotting
   markers_trajectory <- markers %>%
-    pivot_longer(cols = outcomes, names_to ="outcome")
+    tidyr::pivot_longer(cols = outcomes, names_to ="outcome")
   markers_trajectory <- markers_trajectory %>%
-    mutate(is_binary = is_binary[markers_trajectory$outcome])
-  # Filter out a single subject
-  # subjects <- markers_trajectory %>%
-  #   dplyr::select(all_of(id)) %>%
-  #   unique() %>%
-  #   unlist()
-  # If binary == TRUE
-  binary_plot <- markers_trajectory %>%
-    filter(
-      is_binary == TRUE
-    ) %>%
-    ggplot(aes(x=time, y=value, col=outcome)) +
+    dplyr::mutate(is_binary = is_binary[markers_trajectory$outcome])
+  # IF binary == TRUE
+  binary_plot <- ggplot(
+    data = markers_trajectory %>%
+      dplyr::filter(
+        is_binary == TRUE
+        ) %>% as.data.frame(),
+    aes(x=time, y=value, col=outcome)) +
     geom_point() +
     geom_line(alpha=0.8) +
     scale_x_continuous(name="",
@@ -161,15 +145,16 @@ plot_predictions <- function (predictions,
     scale_y_continuous(
       limits=c(0,1),
       name = "longitudinal outcome") +
-    theme_bw() +  # FIX: Tufte theme later
+    theme_bw() +
     theme(legend.position = "none") +
     facet_wrap(vars(outcome))
   # If binary == FALSE
-  continuous_plot <- markers_trajectory %>%
-    filter(
-      is_binary == FALSE
-    ) %>%
-    ggplot(aes(x=time, y=value, col=outcome)) +
+  continuous_plot <- ggplot(
+    data=markers_trajectory %>%
+      filter(
+        is_binary == FALSE
+      ) %>% as.data.frame(),
+    aes(x=time, y=value, col=outcome)) +
     geom_point() +
     geom_line(alpha = 0.8) +
     scale_x_continuous(name = "",
@@ -177,13 +162,13 @@ plot_predictions <- function (predictions,
                        breaks = scales::breaks_width(0.5)
     ) +
     scale_y_continuous(name = "longitudinal outcome") +
-    theme_bw() +  # FIX: Tufte theme later
+    theme_bw() +
     theme(legend.position = "none") +
     facet_wrap(vars(outcome),
                scales="free")
   # Plot the predictions
   surv_plot <- pred %>%
-    filter(landmark==min(landmark)) %>%
+    dplyr::filter(landmark==min(landmark)) %>%
     ggplot(aes(x=horizon,y=post_fail)) +
     geom_line(alpha = 0.8)  +
     scale_x_continuous(name = "",
@@ -192,9 +177,9 @@ plot_predictions <- function (predictions,
                        limits = c(0, 1),
                        breaks = scales::breaks_width(0.2),
                        position = "right") +
-    theme_bw() # FIX: theme Tufte
+    theme_bw()
   # Combine plots and return
-  grid.arrange(
+  gridExtra::grid.arrange(
     grobs=list(binary_plot, continuous_plot, surv_plot),
     widths=c(1,1),
     layout_matrix=rbind(

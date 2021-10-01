@@ -447,7 +447,7 @@ get_likelihood_profiles_fail <- function(likelihood_fail,
 #'
 #' @export
 get_priors <- function (data, time_failure, failure, horizon, interval, dist = "weibull") {
-  surv <- survival::Surv(get(time_failure), get(failure))
+  surv <- paste0("survival::Surv(", time_failure,", ", failure, ")")
   sfit_wb <- flexsurvreg(as.formula(paste(surv,"~ 1")), data = data, dist = dist)
   # get the prior failure probabilities from the weibull model
   pct <- seq(0, 1, by = 0.001)
