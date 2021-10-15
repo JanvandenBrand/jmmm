@@ -21,3 +21,8 @@ A list of length nrow(pairs) that includes
 \description{
 Takes a data.frame with longitudinal data in long format and checks if the longitudinal data are binary or numeric.
 }
+\examples{
+\dontrun{
+model_info <- test_input_datatypes(data = df, pairs = pairs)
+}
+}

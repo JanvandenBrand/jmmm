@@ -14,7 +14,6 @@ mmm_model(
   model_families,
   iter_EM = 100,
   iter_qN_outer = 10,
-  parallel_plan = "sequential",
   ncores = NULL,
   ...
 )
@@ -38,8 +37,6 @@ mmm_model(
 
 \item{iter_qN_outer}{(default = 10) outer Quasi Newton iterations passed to GLMMadaptive::mixed_model().}
 
-\item{parallel_plan}{(default = "sequential") The parallel plan to be passed to future.apply(). Currently available: "sequential" and "multisession."}
-
 \item{ncores}{number of workers for multisession parallel plan.}
 
 \item{...}{additional arguments passed to GLMMadaptive::mixed_model().}
@@ -57,4 +54,25 @@ Takes the stacked data and the user defined formulas for the fixed and random ef
 Using a different number of workers than pairs may result in problems during the optimization process. The output of the pairwise model fitting is combined
 and any parameters that have been estimated multiple times are averaged. The procedure takes the individual level contributions to the Maximum Likelihood in
 order to estimate the standard errors for the parameter estimates with a robust sandwich estimator.
+}
+\examples{
+\dontrun{
+# enable parallel processing on a Windows machine
+future::plan(multisession, workers=2)
+
+# Fit the model
+mmm_model(fixed = fixed,
+random = random,
+id = "id",
+data = df,
+stacked_data = df_stacked,
+pairs = pairs,
+model_families = model_info,
+iter_EM = 100,
+iter_qN_outer = 30,
+nAGQ = 7)
+
+# Reset the parallel plan back to its default.
+future::plan("default")
+}
 }

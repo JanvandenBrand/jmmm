@@ -18,3 +18,12 @@ a list with the fixed formulas for the pairwise model fitting stage.
 Takes a list of covariates for the random slopes.
 Each element of the list are the random slopes for a pairwise model
 }
+\examples{
+# Random intercept at subject level
+random <- make_random_formula(id = "id")
+
+# Add random slopes
+\dontrun{
+random <- make_random_formula(id = "id", covars = "time")
+}
+}

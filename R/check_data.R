@@ -9,6 +9,9 @@
 #' @export
 #'
 #' @returns a matrix of length(outomes)*(length(outcomes)-1)/2 rows and 2 columns with all unique pairs.
+#'
+#' @examples
+#' pairs <- make_pairs(outcomes = c("y1", "y2", "y3", "y4"))
 make_pairs <- function(outcomes) {
   N <- length(outcomes)
   Npair <- N * (N-1)/2
@@ -38,6 +41,11 @@ make_pairs <- function(outcomes) {
 #' \describe{
 #'   \item{families}{character vector with the custom model family.}
 #'   \item{indicator}{a character vector with the indicator for the binary outcome if family = binary.normal}
+#' }
+#'
+#' @examples
+#' \dontrun{
+#' model_info <- test_input_datatypes(data = df, pairs = pairs)
 #' }
 test_input_datatypes <- function (data, pairs) {
 
@@ -90,6 +98,16 @@ test_input_datatypes <- function (data, pairs) {
 #' @export
 #'
 #' @return a list of data.frames of length nrow(pairs).
+#'
+#' @examples
+#' \dontrun{
+#' df_stacked <- stack_data(
+#'   data = df,
+#'   id = "id",
+#'   pairs = pairs,
+#'   covars = c("time", "sex", "time_failure")
+#' )
+#' }
 stack_data <- function (data, id, pairs, covars = NULL) {
   stopifnot("Argument 'id' is missing. Use it to set subject level id." = is.character(id))
   stopifnot("'id' should refer to a character vector" = is.character(unlist(data[id])))
@@ -155,6 +173,11 @@ stack_data <- function (data, id, pairs, covars = NULL) {
 #' @import dplyr
 #'
 #' @return Prints a list with assertions. All should return TRUE. Otherwise something went wrong.
+#'
+#' @examples
+#' \dontrun{
+#' model_info <- test_input_datatypes(data = df, pairs = pairs, stacked_data=df_stacked)
+#' }
 test_compare_stacked_to_original_data <- function (data, stacked_data, pairs) {
   for (i in 1:nrow(pairs)) {
     current <- unlist(data[paste(pairs[i,1])])

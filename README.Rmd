@@ -23,19 +23,19 @@ The goal of jmmm is to fit multivariate mixed models and apply a discriminant an
 The package was adapted from the work by Fieuws _et al._ [Fieuws Biostatistics 2008](https://doi-org.ru.idm.oclc.org/10.1093/biostatistics/kxm041) In summary, we fit a high-dimensional joint model by first fitting all possible pairwise combinations of univariate mixed models within a subset of patients with and without graft failure. Note that the subset of subjects without the event of interest should complete the entire follow-up, and thus no longer be at risk of the event. Subjects who did not have the event of interest, but who have not yet accrued full follow-up, should be excluded from model training. The pairwise mixed models were fitted using the mixed_model() function from the [GLMMAdaptive package (version 0.8) developed by Rizopoulos](https://drizopoulos.github.io/GLMMadaptive/index.html)
 We join the pairwise models into a multivariate mixed model by averaging the parameter estimates. Finally, we join the multivariate mixed models to the event of interest using a discriminant analysis approach. Breaking up the large multivariate model into  pairwise combinations of univariate models reduces computational burden. However, as a result of the many possible pairwise combinations of biomarker evolutions, some parameters for each longitudinal marker were estimated multiple times. Therefore, estimates from the pairwise models are averaged to obtain single estimates for all parameters in the multivariate mixed model. In addition, subject level contributions to the first and second derivatives for the pairwise models are averaged and used to generate a sandwich estimator of the standard errors for the parameters. The multivatiate mixed models for the event and survivors are used to construct likelihood profiles for marker evolutions. In turn, the profiles are used to generate predictions by applying Bayes’ rule.
 
+The work was supported by a grant from the [Dutch Kidney Foundation](https://nierstichting.nl/) - Grant 19OK003.
+
 ## Installation
 
 You can install the development version of `jmmm` from github using the devtools package:
 
-``` r
-devtools::install_github("JanvandenBrand/jmmm")
-```
+`devtools::install_github("JanvandenBrand/jmmm")`
 
 ## Example
 
 A basic example with simulated data is included below.
 
-```{r load}
+```{r load, warning=FALSE}
 library(jmmm)
 # The next libraries are to run the example
 library(MASS)
@@ -151,6 +151,10 @@ random <- make_random_formula(id = "id")
 The actual model fitting is largely done by GLMMadaptive::mixed_model(). The mmm_model() function wraps around it. First we fit the model for the survivors. Note that the fitting algorithm uses future.apply to paralellize the process in a flexible manner. 
 
 ```{r, warning=FALSE}
+future::plan("multisession", workers = 4)
+```
+
+```{r, warning=FALSE}
 model_nofail <- mmm_model(fixed = fixed_nofail,
                           random = random,
                           id = "id",
@@ -160,8 +164,7 @@ model_nofail <- mmm_model(fixed = fixed_nofail,
                           model_families = model_info,
                           iter_EM = 100,
                           iter_qN_outer = 30,
-                          nAGQ = 11,
-                          parallel_plan = "multisession")
+                          nAGQ = 11)
 ```
 
 ```{r, warning=FALSE}
@@ -174,8 +177,7 @@ model_fail <- mmm_model(fixed = fixed_fail,
                         model_families = model_info,
                         iter_EM = 100,
                         iter_qN_outer = 30,
-                        nAGQ = 11,
-                        parallel_plan = "multisession")
+                        nAGQ = 11)
 ```
 
 
@@ -192,40 +194,45 @@ prior <- get_priors(data = df,
                     failure = "failure",
                     horizon = 5,
                     interval = 1/4)
-.outcomes <- get_outcome_type(data = df, 
-                             outcomes)
+outcome_types <- get_outcome_type(data = df, 
+                                  outcomes)
 ```
 
 Generate the predictions. Note that the formulas for the fixed and random effects need to include the longitudinal markers as well as baseline covariates. In order to get predictions at various times, we simply apply the function across several landmarks. The `mmm_predictions` function support parallel processing through the future.apply package.
 
 ```{r predictions}
-future::plan("multisession", workers = 4)
-l <- 1:2
-predictions <- lapply(l, function(lm) {
-    mmm_predictions(data=df,
-                    outcomes=.outcomes,
-                    fixed_formula_nofail="~ y1 + y2 + y3 + y4 + time + sex",
-                    random_formula_nofail="~ 1| id",
-                    random_effects_nofail=re_samples_nofail,
-                    parameters_nofail=model_nofail$estimates,
-                    fixed_formula_fail="~ y1 + y2 + y3 + y4 + time + sex + time_failure",
-                    random_formula_fail="~ 1 | id",
-                    random_effects_fail=re_samples_fail,
-                    parameters_fail=model_fail$estimates,
-                    time="time",
-                    failure="failure",
-                    failure_time="time_failure",
-                    prior=prior,
-                    id="id",
-                    landmark=lm,
-                    horizon=5,
-                    interval=1/4)
-})
+predictions <- mmm_predictions(data=df,
+                               outcomes=outcome_types,
+                               fixed_formula_nofail="~ y1 + y2 + y3 + y4 + time + sex",
+                               random_formula_nofail="~ 1| id",
+                               random_effects_nofail=re_samples_nofail,
+                               parameters_nofail=model_nofail$estimates,
+                               fixed_formula_fail="~ y1 + y2 + y3 + y4 + time + sex + time_failure",
+                               random_formula_fail="~ 1 | id",
+                               random_effects_fail=re_samples_fail,
+                               parameters_fail=model_fail$estimates,
+                               time="time",
+                               failure="failure",
+                               failure_time="time_failure",
+                               prior=prior,
+                               id="id",
+                               landmark=1,
+                               horizon=5,
+                               interval=1/4)
 ```
 
 ### Plot predictions
 The following example shows the predictions for a single subject. This helps communicate forecasts of the probability of an event conditional on the evolution of longitudinal data. At present the function can only be used to plot data for a single subject. However it can generate a list of grobs for predictions generated at different landmark times.
 
-<Add plot>
+<Next bit does not work when knitting to Rmd>
+#```{r plot_predictions, warning=FALSE, message=FALSE, error=FALSE}
+#plot <- plot_predictions(predictions=predictions,
+#                 outcomes=outcomes,
+#                 id="id",
+#                 subject="1", 
+#                 time="time"
+#)
+#grid.arrange(plot)
+#``` 
 
 <Add later: ROC-AUC and calibration plots.>

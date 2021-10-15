@@ -66,6 +66,11 @@ normal <- function () {
 #' @export
 #'
 #' @return a list with the fixed formulas for the pairwise model fitting stage.
+#'
+#' @examples
+#' \dontrun{
+#' fixed <- make_fixed_formula(covars = c("time", "sex", "time_failure"))
+#' }
 make_fixed_formula <- function(covars = NULL) {
   if (!is.null(covars)) {
     covars <- c(sapply(covars, function(x) paste(c(x, "Y1"), collapse = "_")),
@@ -91,6 +96,15 @@ make_fixed_formula <- function(covars = NULL) {
 #' @export
 #'
 #' @return a list with the fixed formulas for the pairwise model fitting stage.
+#'
+#' @examples
+#' # Random intercept at subject level
+#' random <- make_random_formula(id = "id")
+#'
+#' # Add random slopes
+#' \dontrun{
+#' random <- make_random_formula(id = "id", covars = "time")
+#' }
 make_random_formula <- function(id, covars = NULL) {
   if (!is.null(covars)) {
     covars <- c(sapply(covars, function(x) paste(c(x, "Y1"), collapse = "_")),
@@ -103,7 +117,6 @@ make_random_formula <- function(id, covars = NULL) {
     paste(paste("~ -1 +", paste(c(intercepts), collapse = " + ")), "|", id)
   }
 }
-
 
 #' Create random start values
 #'
@@ -158,6 +171,7 @@ get_random_start <- function(model_families, n_fixed, n_random) {
 # The model fitting within a pair is sequential, since optimParallel throws an error.
 # This is a limitation when the number of pairs is less than the number of available workers.
 # FIX: add a check for the formula inputs. If a '+' sign is forgotten a opaque error message is returned.
+# FIX: add a progress bar during model fitting.
 
 #' Fit pairwise mixed models to get start values for the multivariate mixed model
 #'
@@ -190,11 +204,10 @@ get_mmm_start_values <- function (stacked_data,
                                   tol2=1e-4,
                                   tol3=1e-8,
                                   ...) {
-  prog <- progressr::progressor(along = pairs)
+  prog <- progressr::progressor(along = nrow(pairs))
   out <- future_lapply(1:nrow(pairs), function(i, ...) {
     prog(sprintf("Fitting pairwise model number %g of %g.", i, nrow(pairs)),
-         class = "sticky",
-         amount = 0)
+         class = "sticky")
     if (model_families$families[i] == "binary.normal") {
       fit <- mixed_model(fixed = as.formula(fixed),
                          random = as.formula(random),
@@ -289,8 +302,7 @@ get_mmm_derivatives <- function (stacked_data, id, fixed, random, pairs, model_f
   derivatives <- lapply(1:nrow(pairs), function(i) {
     # message("Getting derivatives for pairwise model: ",i, "out of ", nrow(pairs))
     prog(sprintf("Getting derivatives for pairwise model %g out of %g", i, nrow(pairs)),
-         class = "sticky",
-         amount = 0)
+         class = "sticky")
     subject_out <- future_lapply(1:nrow(unique(stacked_data[[i]][id])), function(j, ...) {
       subject_data <- stacked_data[[i]][stacked_data[[i]][id] == unique(stacked_data[[i]][id])[j,1],]
       # Data copy to work around optim requiring n > 1 subjects
@@ -695,7 +707,6 @@ get_model_output <- function(estimates) {
 #' @param id The name of the column with subject ids in stacked_data.
 #' @param iter_EM (default = 100) EM iterations passed to GLMMadaptive::mixed_model().
 #' @param iter_qN_outer (default = 10) outer Quasi Newton iterations passed to GLMMadaptive::mixed_model().
-#' @param parallel_plan (default = "sequential") The parallel plan to be passed to future.apply(). Currently available: "sequential" and "multisession."
 #' @param ncores number of workers for multisession parallel plan.
 #' @param ... additional arguments passed to GLMMadaptive::mixed_model().
 #'
@@ -713,6 +724,27 @@ get_model_output <- function(estimates) {
 #'}
 #'
 #' @export
+#'
+#' @examples
+#' \dontrun{
+#' # enable parallel processing on a Windows machine
+#' future::plan(multisession, workers=2)
+#'
+#' # Fit the model
+#' mmm_model(fixed = fixed,
+#' random = random,
+#' id = "id",
+#' data = df,
+#' stacked_data = df_stacked,
+#' pairs = pairs,
+#' model_families = model_info,
+#' iter_EM = 100,
+#' iter_qN_outer = 30,
+#' nAGQ = 7)
+#'
+#' # Reset the parallel plan back to its default.
+#' future::plan("default")
+#' }
 mmm_model <- function (fixed,
                        random,
                        id,
@@ -722,22 +754,12 @@ mmm_model <- function (fixed,
                        model_families,
                        iter_EM = 100,
                        iter_qN_outer = 10,
-                       parallel_plan = "sequential",
                        ncores = NULL,
                        ...) {
   if (!id %in% colnames(data)) {
     stop("Could not find `id` in colnames(`data`). Have you specified the correct subject id?")
   }
-  if (parallel_plan == "sequential") {
-    future::plan(parallel_plan)
-    message("Fitting pairwise model using ", parallel_plan, ".")
-  } else if (parallel_plan == "multisession") {
-    if (is.null(ncores)) {
-      ncores <- min(parallel::detectCores() - 1, nrow(pairs))
-    }
-    future::plan(parallel_plan, workers = ncores)
-    message("Fitting pairwise model using ", parallel_plan, " on ", ncores, " cores.")
-  }
+  message("Fitting pairwise model")
   start_values <- get_mmm_start_values(stacked_data = stacked_data,
                                        fixed = as.formula(fixed),
                                        random = as.formula(random),
@@ -747,14 +769,7 @@ mmm_model <- function (fixed,
                                        iter_qN_outer = iter_qN_outer,
                                       # ...
   )
-  if (parallel_plan == "sequential") {
-    future::plan(parallel_plan)
-    message("Retrieving derivatives using ", parallel_plan, ".")
-  } else if (parallel_plan == "multisession") {
-    ncores <- parallel::detectCores() - 1
-    future::plan(parallel_plan, workers = ncores)
-    message("Retrieving derivatives using ", parallel_plan, " on ", ncores, " cores.")
-  }
+  message("Retrieving derivatives")
   derivatives <- get_mmm_derivatives(stacked_data = stacked_data,
                                      id = id,
                                      fixed = as.formula(fixed),
@@ -788,7 +803,5 @@ mmm_model <- function (fixed,
                                   data = data,
                                   id = id)
   model <- get_model_output(estimates = mmm_estimates)
-  # reset future plan
-  future::plan("sequential")
   model
 }

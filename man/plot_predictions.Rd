@@ -24,3 +24,14 @@ plots for survival conditional on the longitudinal biomarker trajectory.
 For a given landmark time, plot the probability of failure conditional on survival
 and longitudinal biomarker evolutions.
 }
+\examples{
+\dontrun{
+plot_predictions(
+  predictions=predictions,
+  outcomes=outcomes,
+  id="id",
+  subject="0001",
+  time="time"
+)
+}
+}

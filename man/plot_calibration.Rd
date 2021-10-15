@@ -32,3 +32,61 @@ a list of grobs
 \description{
 Create a grobs with calibration plot for a given landmark and horizon.
 }
+\examples{
+\dontrun{
+# Retrieve calibration data for plotting
+plot_calibration(
+  predictions=predictions,
+  prediction_landmark=1,prediction_horizon=horizon,
+  id="id",
+  failure_time="stime",
+  failure="failure"
+)
+
+# Create a set of calibration plots from a list of predictions
+  plot_calibration <- lapply(which(lm \%in\% c(1:3)), function(l) {
+    plot_calibration(
+    predictions=predictions[[l]],
+    prediction_landmark=lm[l],
+    prediction_horizon=horizon,
+    id="id",
+    failure_time="ftime",
+    failure="failure"
+  )
+})
+
+# Combine the calibration data
+plot_calibration <- do.call(rbind, plot_calibration_train)
+
+# Create the plot with overlayed calibration lines for each landmark
+plot_calibration_train <- ggplot(
+    plot_calibration_train,
+    aes(x=Pred, y=Obs)
+  ) +
+  geom_smooth(
+    aes(color=factor(landmark),
+    fill=factor(landmark)),
+    method="loess",
+    span=0.3,
+    alpha=0.2
+ ) +
+ geom_abline(intercept=0, slope=1, alpha=0.5) +
+ geom_rug(aes(x=Pred)) +
+ scale_y_continuous(breaks=seq(0, 1, 0.2)) +
+ scale_x_continuous(breaks=seq(0, 1, 0.2)) +
+ coord_cartesian(
+   xlim=c(0, 1),
+   ylim=c(0, 1)
+ ) +
+ abs(title="",
+   caption=paste("Calibration plots for kidney graft failure at",
+     horizon,
+     "years follow-up in training data"),
+   y="Observed risks",
+   x="Predicted risks",
+   fill="Landmark"
+ ) +
+ guides(color="none") +
+ ggthemes::theme_tufte(ticks=TRUE)
+ }
+}

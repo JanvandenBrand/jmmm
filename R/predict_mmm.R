@@ -6,6 +6,14 @@
 #' @param outcomes a character vector with the names of the longitudinal outcomes
 #'
 #' @export
+#'
+#' @examples
+#' \dontrun{
+#' outcomes_types <- get_outcome_type(
+#'   data = df,
+#'   outcomes
+#' )
+#' }
 
 get_outcome_type <- function(data, outcomes) {
   out <- lapply(outcomes, function(i) {
@@ -359,13 +367,6 @@ get_likelihood_profiles_nofail <- function(likelihood_nofail,
           dplyr::filter(time == max(time)) %>%
           dplyr::mutate(cutpoint1 = t)
       }
-      # else {
-      #     temp2 <- data.frame(
-      #       id = l$id[1],
-      #       time = 0,
-      #       likelihoods = 1,
-      #       cutpoint1 = t)
-      #   }
     })
     do.call(rbind, temp) %>%
       arrange(id) %>%
@@ -446,6 +447,17 @@ get_likelihood_profiles_fail <- function(likelihood_fail,
 #' @return a priori survival and failure probabilities (1-survival) for every interval between min landmark and max horizon
 #'
 #' @export
+#'
+#' @examples
+#' \dontrun{
+#' # Return prior up to a horizon of 5 (years) at 3 month intervals.
+#' get_priors(data=df,
+#'   time_failure="ftime",
+#'   failure="failure",
+#'   horizon=5,
+#'   interval=1/4
+#' )
+#' }
 get_priors <- function (data, time_failure, failure, horizon, interval, dist = "weibull") {
   surv <- paste0("survival::Surv(", time_failure,", ", failure, ")")
   sfit_wb <- flexsurvreg(as.formula(paste(surv,"~ 1")), data = data, dist = dist)
@@ -574,6 +586,48 @@ get_posteriors <- function (f_fail, f_nofail, prior) {
 #' @export
 #'
 #' @return a data.frame with the posterior predictions for each subject at every landmark up to the horizon
+#'
+#' @examples
+#' \dontrun{
+#' # First retrieve random effects samples from a fitted model
+#' mu <- setNames(rep(0, length(outcomes)), outcomes)
+#' re_samples_nofail <- MASS:mvrnorm(1e3,mu = mu, Sigma = model_nofail$vcov)
+#' re_samples_fail <- MASS:mvrnorm(1e3,mu = mu, Sigma = model_fail$vcov)
+#'
+#' # Get the priors
+#' prior <- get_priors(data = df,
+#' time_failure = "time_failure",
+#' failure = "failure",
+#' horizon = 5,
+#' interval = 1/12)
+#'
+#' # get the outcomes types
+#' outcome_types <- get_outcome_type(data = df, outcomes)
+#'
+#' # Select a single subject
+#' df_pred <- df %>% filter(id == 10)
+#'
+#' mmm_predictions(
+#'   data=df,
+#'   outcomes=outcome_types,
+#'   fixed_formula_nofail="~ y1 + y2 + y3 + y4 + time + sex",
+#'   random_formula_nofail="~ 1| id",
+#'   random_effects_nofail=re_samples_nofail,
+#'   parameters_nofail=model_nofail$estimates,
+#'   fixed_formula_fail="~ y1 + y2 + y3 + y4 + time + sex + time_failure",
+#'   random_formula_fail="~ 1 | id",
+#'   random_effects_fail=re_samples_fail,
+#'   parameters_fail=model_fail$estimates,
+#'   time="time",
+#'   failure="failure",
+#'   failure_time="time_failure",
+#'   prior=prior,
+#'   id="id",
+#'   landmark=1,
+#'   horizon=5,
+#'   interval=1/4
+#' )
+#' }
 
 mmm_predictions <- function( data,
                              outcomes,

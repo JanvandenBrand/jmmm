@@ -39,14 +39,15 @@ multivatiate mixed models for the event and survivors are used to
 construct likelihood profiles for marker evolutions. In turn, the
 profiles are used to generate predictions by applying Bayes’ rule.
 
+The work was supported by a grant from the [Dutch Kidney
+Foundation](https://nierstichting.nl/) - Grant 19OK003.
+
 ## Installation
 
 You can install the development version of `jmmm` from github using the
 devtools package:
 
-``` r
-devtools::install_github("JanvandenBrand/jmmm")
-```
+`devtools::install_github("JanvandenBrand/jmmm")`
 
 ## Example
 
@@ -54,28 +55,6 @@ A basic example with simulated data is included below.
 
 ``` r
 library(jmmm)
-#> Warning: replacing previous import 'GLMMadaptive::negative.binomial' by
-#> 'MASS::negative.binomial' when loading 'jmmm'
-#> Warning: replacing previous import 'MASS::select' by 'dplyr::select' when
-#> loading 'jmmm'
-#> Warning: replacing previous import 'dplyr::combine' by 'gridExtra::combine' when
-#> loading 'jmmm'
-#> Warning: replacing previous import 'Matrix::cov2cor' by 'stats::cov2cor' when
-#> loading 'jmmm'
-#> Warning: replacing previous import 'dplyr::filter' by 'stats::filter' when
-#> loading 'jmmm'
-#> Warning: replacing previous import 'dplyr::lag' by 'stats::lag' when loading
-#> 'jmmm'
-#> Warning: replacing previous import 'Matrix::toeplitz' by 'stats::toeplitz' when
-#> loading 'jmmm'
-#> Warning: replacing previous import 'Matrix::update' by 'stats::update' when
-#> loading 'jmmm'
-#> Warning: replacing previous import 'Matrix::expand' by 'tidyr::expand' when
-#> loading 'jmmm'
-#> Warning: replacing previous import 'Matrix::pack' by 'tidyr::pack' when loading
-#> 'jmmm'
-#> Warning: replacing previous import 'Matrix::unpack' by 'tidyr::unpack' when
-#> loading 'jmmm'
 # The next libraries are to run the example
 library(MASS)
 library(gridExtra)
@@ -214,6 +193,10 @@ algorithm uses future.apply to paralellize the process in a flexible
 manner.
 
 ``` r
+future::plan("multisession", workers = 4)
+```
+
+``` r
 model_nofail <- mmm_model(fixed = fixed_nofail,
                           random = random,
                           id = "id",
@@ -223,10 +206,9 @@ model_nofail <- mmm_model(fixed = fixed_nofail,
                           model_families = model_info,
                           iter_EM = 100,
                           iter_qN_outer = 30,
-                          nAGQ = 11,
-                          parallel_plan = "multisession")
-#> Fitting pairwise model using multisession on 6 cores.
-#> Retrieving derivatives using multisession on 7 cores.
+                          nAGQ = 11)
+#> Fitting pairwise model
+#> Retrieving derivatives
 #> Compiling model output.
 ```
 
@@ -240,10 +222,9 @@ model_fail <- mmm_model(fixed = fixed_fail,
                         model_families = model_info,
                         iter_EM = 100,
                         iter_qN_outer = 30,
-                        nAGQ = 11,
-                        parallel_plan = "multisession")
-#> Fitting pairwise model using multisession on 6 cores.
-#> Retrieving derivatives using multisession on 7 cores.
+                        nAGQ = 11)
+#> Fitting pairwise model
+#> Retrieving derivatives
 #> Compiling model output.
 #> The Variance-Covariance matrix was not a positive definite.
 #>             Projecting to the closest positive definite.
@@ -269,8 +250,8 @@ prior <- get_priors(data = df,
                     failure = "failure",
                     horizon = 5,
                     interval = 1/4)
-.outcomes <- get_outcome_type(data = df, 
-                             outcomes)
+outcome_types <- get_outcome_type(data = df, 
+                                  outcomes)
 ```
 
 Generate the predictions. Note that the formulas for the fixed and
@@ -281,28 +262,24 @@ simply apply the function across several landmarks. The
 future.apply package.
 
 ``` r
-future::plan("multisession", workers = 4)
-l <- 1:2
-predictions <- lapply(l, function(lm) {
-    mmm_predictions(data=df,
-                    outcomes=.outcomes,
-                    fixed_formula_nofail="~ y1 + y2 + y3 + y4 + time + sex",
-                    random_formula_nofail="~ 1| id",
-                    random_effects_nofail=re_samples_nofail,
-                    parameters_nofail=model_nofail$estimates,
-                    fixed_formula_fail="~ y1 + y2 + y3 + y4 + time + sex + time_failure",
-                    random_formula_fail="~ 1 | id",
-                    random_effects_fail=re_samples_fail,
-                    parameters_fail=model_fail$estimates,
-                    time="time",
-                    failure="failure",
-                    failure_time="time_failure",
-                    prior=prior,
-                    id="id",
-                    landmark=lm,
-                    horizon=5,
-                    interval=1/4)
-})
+predictions <- mmm_predictions(data=df,
+                               outcomes=outcome_types,
+                               fixed_formula_nofail="~ y1 + y2 + y3 + y4 + time + sex",
+                               random_formula_nofail="~ 1| id",
+                               random_effects_nofail=re_samples_nofail,
+                               parameters_nofail=model_nofail$estimates,
+                               fixed_formula_fail="~ y1 + y2 + y3 + y4 + time + sex + time_failure",
+                               random_formula_fail="~ 1 | id",
+                               random_effects_fail=re_samples_fail,
+                               parameters_fail=model_fail$estimates,
+                               time="time",
+                               failure="failure",
+                               failure_time="time_failure",
+                               prior=prior,
+                               id="id",
+                               landmark=1,
+                               horizon=5,
+                               interval=1/4)
 ```
 
 ### Plot predictions
@@ -313,6 +290,7 @@ on the evolution of longitudinal data. At present the function can only
 be used to plot data for a single subject. However it can generate a
 list of grobs for predictions generated at different landmark times.
 
-<Add plot>
+<Next bit does not work when knitting to Rmd>
+\#`{r plot_predictions, warning=FALSE, message=FALSE, error=FALSE} #plot <- plot_predictions(predictions=predictions, #                 outcomes=outcomes, #                 id="id", #                 subject="1",  #                 time="time" #) #grid.arrange(plot) #`
 
 &lt;Add later: ROC-AUC and calibration plots.&gt;

@@ -25,3 +25,14 @@ a priori survival and failure probabilities (1-survival) for every interval betw
 \description{
 Call flexsurvreg to fit an unconditional survival model and return obtain priors
 }
+\examples{
+\dontrun{
+# Return prior up to a horizon of 5 (years) at 3 month intervals.
+get_priors(data=df,
+  time_failure="ftime",
+  failure="failure",
+  horizon=5,
+  interval=1/4
+)
+}
+}

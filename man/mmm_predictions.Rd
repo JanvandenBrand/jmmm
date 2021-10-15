@@ -69,3 +69,45 @@ a data.frame with the posterior predictions for each subject at every landmark u
 \description{
 Calculate the posterior predictions from the likelihood profiles and priors. Implements equation 7.1 (p154) from Steffen's thesis.
 }
+\examples{
+\dontrun{
+# First retrieve random effects samples from a fitted model
+mu <- setNames(rep(0, length(outcomes)), outcomes)
+re_samples_nofail <- MASS:mvrnorm(1e3,mu = mu, Sigma = model_nofail$vcov)
+re_samples_fail <- MASS:mvrnorm(1e3,mu = mu, Sigma = model_fail$vcov)
+
+# Get the priors
+prior <- get_priors(data = df,
+time_failure = "time_failure",
+failure = "failure",
+horizon = 5,
+interval = 1/12)
+
+# get the outcomes types
+outcome_types <- get_outcome_type(data = df, outcomes)
+
+# Select a single subject
+df_pred <- df \%>\% filter(id == 10)
+
+mmm_predictions(
+  data=df,
+  outcomes=outcome_types,
+  fixed_formula_nofail="~ y1 + y2 + y3 + y4 + time + sex",
+  random_formula_nofail="~ 1| id",
+  random_effects_nofail=re_samples_nofail,
+  parameters_nofail=model_nofail$estimates,
+  fixed_formula_fail="~ y1 + y2 + y3 + y4 + time + sex + time_failure",
+  random_formula_fail="~ 1 | id",
+  random_effects_fail=re_samples_fail,
+  parameters_fail=model_fail$estimates,
+  time="time",
+  failure="failure",
+  failure_time="time_failure",
+  prior=prior,
+  id="id",
+  landmark=1,
+  horizon=5,
+  interval=1/4
+)
+}
+}

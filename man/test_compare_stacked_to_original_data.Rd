@@ -19,3 +19,8 @@ Prints a list with assertions. All should return TRUE. Otherwise something went 
 \description{
 ...
 }
+\examples{
+\dontrun{
+model_info <- test_input_datatypes(data = df, pairs = pairs, stacked_data=df_stacked)
+}
+}

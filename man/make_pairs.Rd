@@ -15,3 +15,6 @@ a matrix of length(outomes)*(length(outcomes)-1)/2 rows and 2 columns with all u
 \description{
 Take a character with the names of the longitudinal outcome variables and make all unique pairs
 }
+\examples{
+pairs <- make_pairs(outcomes = c("y1", "y2", "y3", "y4"))
+}

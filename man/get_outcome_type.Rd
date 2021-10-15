@@ -14,3 +14,11 @@ get_outcome_type(data, outcomes)
 \description{
 Return a data.frame with the outcome label and type
 }
+\examples{
+\dontrun{
+outcomes_types <- get_outcome_type(
+  data = df,
+  outcomes
+)
+}
+}

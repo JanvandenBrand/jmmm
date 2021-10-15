@@ -23,3 +23,13 @@ Takes a data.frame in with longitudinal data to be used in the multivariate mixe
 Uses the pairwise combination created with the make_pairs() function to unroll the outcome matrix into a vector.
 The longitudinal predictor and time invariant covariates are processed accordingly.
 }
+\examples{
+\dontrun{
+df_stacked <- stack_data(
+  data = df,
+  id = "id",
+  pairs = pairs,
+  covars = c("time", "sex", "time_failure")
+)
+}
+}

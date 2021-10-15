@@ -33,3 +33,28 @@ from the mmm_predictions function.
 \details{
 Uses the timeROC package to determine the area under the receiver operating characteristics curve.
 }
+\examples{
+# Get the ROC-AUC for a single landmark
+\dontrun{
+get_auc(
+  predictions=predictions,
+  prediction_landmark=1,
+  prediction_horizon=5,
+  id="id",
+  failure_time="ftime",
+  failure="failure")
+
+# Get the ROC-AUC for a series of landmarks from a list of predictions
+lm <- 1:5
+lapply(seq_along(lm), function(l) {
+  get_auc(
+    predictions=predictions_test[[l]],
+    prediction_landmark=lm[l],
+    prediction_horizon=horizon,
+    id="transnr",
+    failure_time="stime",
+    failure="failure"
+  )
+})
+}
+}
