@@ -148,10 +148,22 @@ random <- make_random_formula(id = "id")
 ```
 
 ### Fitting the Multivatiate Mixed Models
-The actual model fitting is largely done by GLMMadaptive::mixed_model(). The mmm_model() function wraps around it. First we fit the model for the survivors. Note that the fitting algorithm uses future.apply to paralellize the process in a flexible manner. 
+The actual model fitting is largely done by GLMMadaptive::mixed_model(). The mmm_model() function wraps around it. First we fit the model for the survivors. Note that the fitting algorithm uses `future.apply` to paralellize the process in a flexible manner. 
 
 ```{r, warning=FALSE}
 future::plan("multisession", workers = 4)
+```
+
+The `progressr` package has been implemented to provide status updates. You can use the following to show interactive progress updates. 
+
+```
+progressr::handlers(global=TRUE)
+progressr::handlers(list(
+  progressr::handler_progress(
+    format=":current/:total (:message) [:bar]",
+    width=100,
+    complete="+"
+  )))
 ```
 
 ```{r, warning=FALSE}
@@ -224,15 +236,15 @@ predictions <- mmm_predictions(data=df,
 ### Plot predictions
 The following example shows the predictions for a single subject. This helps communicate forecasts of the probability of an event conditional on the evolution of longitudinal data. At present the function can only be used to plot data for a single subject. However it can generate a list of grobs for predictions generated at different landmark times.
 
-<Next bit does not work when knitting to Rmd>
-#```{r plot_predictions, warning=FALSE, message=FALSE, error=FALSE}
-#plot <- plot_predictions(predictions=predictions,
-#                 outcomes=outcomes,
-#                 id="id",
-#                 subject="1", 
-#                 time="time"
-#)
-#grid.arrange(plot)
-#``` 
+_The code below works in an interactive R session, but not with markdown. Markdown makes a clean environment when knitting. I haven't been able to figure out why this messes with the grid.arrange()_ 
+```
+plot <- plot_predictions(predictions=predictions,
+                 outcomes=outcomes,
+                 id="id",
+                 subject="1", 
+                 time="time"
+)
+grid.arrange(plot)
+``` 
 
 <Add later: ROC-AUC and calibration plots.>

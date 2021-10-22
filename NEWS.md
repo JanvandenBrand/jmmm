@@ -1,3 +1,8 @@
+# jmmm 0.3
+
+## Minor changes
+Updated handling of `progressr` to show more accurate status updates on fitting pairwise models in parallel. 
+
 # jmmm 0.2
 
 ## Major changes

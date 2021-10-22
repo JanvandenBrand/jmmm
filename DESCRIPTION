@@ -1,13 +1,13 @@
 Package: jmmm
 Title: High Dimensional Joint Models 
-Version: 0.0.2
-Date: 2021-10-15
+Version: 0.0.3
+Date: 2021-10-22
 Authors@R: 
     person(given = "Jan",
            family = "van den Brand",
            role = c("aut", "cre"),
            email = "janvandenbrand@gmail.com",
-           comment = c(ORCID = "YOUR-ORCID-ID"))
+           comment = c(ORCID = "0000-0002-1685-9886"))
 Description: Fit a high dimensional joint model using a discriminant analysis framework.
 License: MIT + file LICENSE
 URL: https://github.com/JanvandenBrand/jmmm

@@ -62,8 +62,8 @@ library(tidyverse)
 #> -- Attaching packages --------------------------------------- tidyverse 1.3.1 --
 #> v ggplot2 3.3.5     v purrr   0.3.4
 #> v tibble  3.1.3     v dplyr   1.0.7
-#> v tidyr   1.1.3     v stringr 1.4.0
-#> v readr   2.0.1     v forcats 0.5.1
+#> v tidyr   1.1.4     v stringr 1.4.0
+#> v readr   2.0.2     v forcats 0.5.1
 #> -- Conflicts ------------------------------------------ tidyverse_conflicts() --
 #> x dplyr::combine() masks gridExtra::combine()
 #> x dplyr::filter()  masks stats::filter()
@@ -189,12 +189,23 @@ random <- make_random_formula(id = "id")
 The actual model fitting is largely done by
 GLMMadaptive::mixed\_model(). The mmm\_model() function wraps around it.
 First we fit the model for the survivors. Note that the fitting
-algorithm uses future.apply to paralellize the process in a flexible
+algorithm uses `future.apply` to paralellize the process in a flexible
 manner.
 
 ``` r
 future::plan("multisession", workers = 4)
 ```
+
+The `progressr` package has been implemented to provide status updates.
+You can use the following to show interactive progress updates.
+
+    progressr::handlers(global=TRUE)
+    progressr::handlers(list(
+      progressr::handler_progress(
+        format=":current/:total (:message) [:bar]",
+        width=100,
+        complete="+"
+      )))
 
 ``` r
 model_nofail <- mmm_model(fixed = fixed_nofail,
@@ -207,7 +218,7 @@ model_nofail <- mmm_model(fixed = fixed_nofail,
                           iter_EM = 100,
                           iter_qN_outer = 30,
                           nAGQ = 11)
-#> Fitting pairwise model
+#> Fitting pairwise models:
 #> Retrieving derivatives
 #> Compiling model output.
 ```
@@ -223,7 +234,7 @@ model_fail <- mmm_model(fixed = fixed_fail,
                         iter_EM = 100,
                         iter_qN_outer = 30,
                         nAGQ = 11)
-#> Fitting pairwise model
+#> Fitting pairwise models:
 #> Retrieving derivatives
 #> Compiling model output.
 #> The Variance-Covariance matrix was not a positive definite.
@@ -290,7 +301,16 @@ on the evolution of longitudinal data. At present the function can only
 be used to plot data for a single subject. However it can generate a
 list of grobs for predictions generated at different landmark times.
 
-<Next bit does not work when knitting to Rmd>
-\#`{r plot_predictions, warning=FALSE, message=FALSE, error=FALSE} #plot <- plot_predictions(predictions=predictions, #                 outcomes=outcomes, #                 id="id", #                 subject="1",  #                 time="time" #) #grid.arrange(plot) #`
+*The code below works in an interactive R session, but not with
+markdown. Markdown makes a clean environment when knitting. I haven’t
+been able to figure out why this messes with the grid.arrange()*
+
+    plot <- plot_predictions(predictions=predictions,
+                     outcomes=outcomes,
+                     id="id",
+                     subject="1", 
+                     time="time"
+    )
+    grid.arrange(plot)
 
 &lt;Add later: ROC-AUC and calibration plots.&gt;

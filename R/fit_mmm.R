@@ -204,9 +204,9 @@ get_mmm_start_values <- function (stacked_data,
                                   tol2=1e-4,
                                   tol3=1e-8,
                                   ...) {
-  prog <- progressr::progressor(along = nrow(pairs))
+  prog <- progressr::progressor(along = 1:nrow(pairs))
   out <- future_lapply(1:nrow(pairs), function(i, ...) {
-    prog(sprintf("Fitting pairwise model number %g of %g.", i, nrow(pairs)),
+    prog(sprintf("Fitting pairwise model number %g out of %g.", i, nrow(pairs)),
          class = "sticky")
     if (model_families$families[i] == "binary.normal") {
       fit <- mixed_model(fixed = as.formula(fixed),
@@ -298,10 +298,9 @@ get_mmm_start_values <- function (stacked_data,
 
 get_mmm_derivatives <- function (stacked_data, id, fixed, random, pairs, model_families, start_values, nAGQ = 11) {
   stopifnot("id should be a character" = is.character(id))
-  prog <- progressr::progressor(along = pairs)
+  prog <- progressr::progressor(along=1:nrow(pairs))
   derivatives <- lapply(1:nrow(pairs), function(i) {
-    # message("Getting derivatives for pairwise model: ",i, "out of ", nrow(pairs))
-    prog(sprintf("Getting derivatives for pairwise model %g out of %g", i, nrow(pairs)),
+    prog(sprintf("Calculating derivatives for pairwise model %g out of %g", i, nrow(pairs)),
          class = "sticky")
     subject_out <- future_lapply(1:nrow(unique(stacked_data[[i]][id])), function(j, ...) {
       subject_data <- stacked_data[[i]][stacked_data[[i]][id] == unique(stacked_data[[i]][id])[j,1],]
@@ -759,7 +758,7 @@ mmm_model <- function (fixed,
   if (!id %in% colnames(data)) {
     stop("Could not find `id` in colnames(`data`). Have you specified the correct subject id?")
   }
-  message("Fitting pairwise model")
+  message("Fitting pairwise models:")
   start_values <- get_mmm_start_values(stacked_data = stacked_data,
                                        fixed = as.formula(fixed),
                                        random = as.formula(random),
