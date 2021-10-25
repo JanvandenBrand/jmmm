@@ -206,6 +206,7 @@ get_mmm_start_values <- function (stacked_data,
                                   ...) {
   prog <- progressr::progressor(along = 1:nrow(pairs))
   out <- future_lapply(1:nrow(pairs), function(i, ...) {
+    tryCatch({
     prog(sprintf("Fitting pairwise model number %g out of %g.", i, nrow(pairs)),
          class = "sticky")
     if (model_families$families[i] == "binary.normal") {
@@ -264,6 +265,11 @@ get_mmm_start_values <- function (stacked_data,
     } else {
       stop("Model family not found. Has a list with family for every model been provided?") # Fix: this should be evaluated before fitting is started.
     }
+    },
+    error = function(e) {stop(paste("Model fitting failed on pair", i,
+                                    ":", pairs[i, 1], "by", pairs[i, 2]))
+      }
+    )
     list("fit" = fit, "starting_values" = starting_values)
   })
   out

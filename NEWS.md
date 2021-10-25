@@ -1,3 +1,8 @@
+# jmmm 0.4
+
+## Minor changes
+Added error handling to retrieve the model on which fitting failed when using a parallel back end.
+
 # jmmm 0.3
 
 ## Minor changes
