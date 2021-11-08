@@ -1,17 +1,9 @@
-# jmmm 0.5
-
-## Minor changes
-Export family function
-
-# jmmm 0.4
-
-## Minor changes
-Added error handling to retrieve the model on which fitting failed when using a parallel back end.
-
 # jmmm 0.3
 
 ## Minor changes
-Updated handling of `progressr` to show more accurate status updates on fitting pairwise models in parallel. 
+* Updated handling of `progressr` to show more accurate status updates on fitting pairwise models in parallel. 
+* Added error handling to retrieve the model on which fitting failed when using a parallel back end.
+* Export family function
 
 # jmmm 0.2
 
