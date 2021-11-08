@@ -1,3 +1,8 @@
+# jmmm 0.5
+
+## Minor changes
+Export family function
+
 # jmmm 0.4
 
 ## Minor changes

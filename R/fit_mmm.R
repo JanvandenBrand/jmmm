@@ -5,6 +5,8 @@
 #' Link function for the combination of a binary and continuous marker
 #'
 #' @import stats
+#'
+#' @export
 binary.normal <- function (indicator = stop("'indicator must be specified'")) {
   .indicator <- indicator
   env <- new.env(parent = .GlobalEnv)
@@ -29,6 +31,8 @@ binary.normal <- function (indicator = stop("'indicator must be specified'")) {
 #' Link function for the combination of two continuous markers
 #'
 #' @import stats
+#'
+#' @export
 normal <- function () {
   env <- new.env(parent = .GlobalEnv)
   stats <- make.link("identity")
