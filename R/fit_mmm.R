@@ -189,11 +189,14 @@ get_random_start <- function(model_families, n_fixed, n_random) {
 #' @param model_families a list with family names and indicators returned by the test_input_datatypes() function.
 #' @param ... arguments passed to GLMMadaptive::mixed_model()
 #'
+#' @import future
 #' @import future.apply
 #' @import GLMMadaptive
 #' @import tidyverse
 #'
 #' @return a list with starting values to determine the subject level contributions to the derivates.
+#'
+#' @export
 
 get_mmm_start_values <- function (stacked_data,
                                   fixed,
@@ -267,11 +270,15 @@ get_mmm_start_values <- function (stacked_data,
       )
       starting_values <- list(betas = fixef(fit), D = fit$D)
     } else {
-      stop("Model family not found. Has a list with family for every model been provided?") # Fix: this should be evaluated before fitting is started.
+      stop("Model family not found. Has a list with family for every model been provided?")
     }
     },
-    error = function(e) {stop(paste("Model fitting failed on pair", i,
-                                    ":", pairs[i, 1], "by", pairs[i, 2]))
+    error = function(e) {
+      e$message(paste(e$message,
+                      "Model fitting failed on pair", i,":",
+                      pairs[i, 1], "by", pairs[i, 2])
+                )
+      e$message
       }
     )
     list("fit" = fit, "starting_values" = starting_values)
@@ -305,8 +312,17 @@ get_mmm_start_values <- function (stacked_data,
 #' \item{df_hessians}{a list with data.frames storing the subject level Hessians}
 #' \item{df_gradients}{a list with data.frames storing the subject level gradients}
 #' }
+#'
+#' @export
 
-get_mmm_derivatives <- function (stacked_data, id, fixed, random, pairs, model_families, start_values, nAGQ = 11) {
+get_mmm_derivatives <- function (stacked_data,
+                                 id,
+                                 fixed,
+                                 random,
+                                 pairs,
+                                 model_families,
+                                 start_values,
+                                 nAGQ = 11) {
   stopifnot("id should be a character" = is.character(id))
   prog <- progressr::progressor(along=1:nrow(pairs))
   derivatives <- lapply(1:nrow(pairs), function(i) {
@@ -513,6 +529,8 @@ stack_gradients <- function (derivatives, data, id, pairs) {
 #' Take parameter labels from MMM object and return a p*q matrix where p is unique(parameters) and q is the total number of parameters (including duplicates).
 #'
 #' @param parameter_labels A data frame with parameter labels returned by the stack_parameters() function.
+#'
+#' @import Matrix
 #'
 #' @return A p*q matrix with ones if a parameter was estimated and zeros if it was not estimated in the pairwise step
 
@@ -786,6 +804,84 @@ mmm_model <- function (fixed,
                                      pairs = pairs,
                                      model_families = model_families,
                                      start_values = start_values)
+  message("Compiling model output.")
+  parameters <- stack_parameters(start_values = start_values,
+                                 pairs = pairs,
+                                 model_families = model_families)
+  gradients <- stack_gradients(derivatives = derivatives,
+                               data = data,
+                               id = id,
+                               pairs = pairs)
+  A <- create_A_matrix(parameter_labels = parameters$parameter_label)
+  cpgradient <- get_crossproducts( pairs = pairs,
+                                   parameter_labels = parameters$parameter_label,
+                                   gradients = gradients,
+                                   data = data,
+                                   id = id)
+  hessian <- average_hessians(derivatives = derivatives,
+                              pairs = pairs,
+                              data = data,
+                              id = id,
+                              A = A)
+  mmm_estimates <- get_covariance(hessian = hessian,
+                                  cpgradient = cpgradient,
+                                  parameters = parameters,
+                                  A = A,
+                                  data = data,
+                                  id = id)
+  model <- get_model_output(estimates = mmm_estimates)
+  model
+}
+
+#' Average pairwise models
+#'
+#' Average the pairwise models and cast into single multivariate mixed model.
+#' This function is meant to be used with get_mmm_start_values and get_mmm_derivatives
+#' to support easier debugging of models. This is particularly useful when working with
+#' a large number of longitudinal outcomes when the pairwise model for a few throws an error.
+#'
+#' @param pairs a character matrix with the pairs returned by the make_pairs() function.
+#' @param model_families a list with family names and indicators returned by the test_input_datatypes() function.
+#' @param start_values A list (length == length(stacked_data)) with start values returned by the get_start_values() function.
+#' @param derivatives list with derivatives returned by the get_mmm_derivatives() function.
+#' @param data the original data (in wide, unstacked format).
+#' @param id The name of the column with subject ids in stacked_data.
+#'
+#' @import tidyverse
+#' @import Matrix
+#' @import future.apply
+#' @import future
+#' @import MASS
+#' @import dplyr
+#'
+#' @return A list of 3 elements including:
+#' \describe{
+#'   \item{estimates}{A data.frame with the parameter estimates and standard errors}
+#'   \item{vcov}{The Variance-Covariance matrix for the random effects}
+#'   \item{corr}{A correlation matrix for the random effects}
+#'}
+#'
+#' @examples
+#' \dontrun{
+#' average_pairwise_models(
+#'   pairs = pairs,
+#'   model_families = model_families,
+#'   start_values = start_values,
+#'   derivatives = derivatives,
+#'   data = data,
+#'   id = "id")
+#' }
+
+average_pairwise_models <- function (
+  pairs,
+  model_families,
+  start_values,
+  derivatives,
+  data,
+  id) {
+  if (!id %in% colnames(data)) {
+    stop("Could not find `id` in colnames(`data`). Have you specified the correct subject id?")
+  }
   message("Compiling model output.")
   parameters <- stack_parameters(start_values = start_values,
                                  pairs = pairs,

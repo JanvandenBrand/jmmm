@@ -1,3 +1,16 @@
+# jmmm 0.6
+
+## Major changes
+Exported the following functions:
+* `get_mmm_start_values()`
+* `get_mmm_derivatives()`
+
+Added `average_pairwise_models()`
+
+Updated `get_start_values()` to no longer stop execution of `mmm_model()` if fitting a model fails. Instead a placeholder message is included.
+
+Together these changes should help debug and update the multivariate mixed model if errors occur during model fitting. For an example on how to use these functions for debugging see the README file.
+
 # jmmm 0.5
 
 ## Minor changes

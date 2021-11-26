@@ -61,7 +61,7 @@ library(gridExtra)
 library(tidyverse)
 #> -- Attaching packages --------------------------------------- tidyverse 1.3.1 --
 #> v ggplot2 3.3.5     v purrr   0.3.4
-#> v tibble  3.1.3     v dplyr   1.0.7
+#> v tibble  3.1.5     v dplyr   1.0.7
 #> v tidyr   1.1.4     v stringr 1.4.0
 #> v readr   2.0.2     v forcats 0.5.1
 #> -- Conflicts ------------------------------------------ tidyverse_conflicts() --
@@ -169,9 +169,9 @@ Next, we unroll the outcomes matrices of the pairwise combinations of
 markers into a single outcome vector.
 
 ``` r
-df_fail <- df %>% filter(failure == 1)
+df_fail <- df %>% dplyr::filter(failure == 1)
 df_fail_stacked <- stack_data(data = df_fail, id = "id", pairs = pairs, covars = c("time", "sex", "time_failure"))
-df_nofail <- df %>% filter(failure == 0)
+df_nofail <- df %>% dplyr::filter(failure == 0)
 df_nofail_stacked <- stack_data(data = df_nofail, id = "id", pairs = pairs, covars = c("time", "sex"))
 ```
 
@@ -301,10 +301,6 @@ on the evolution of longitudinal data. At present the function can only
 be used to plot data for a single subject. However it can generate a
 list of grobs for predictions generated at different landmark times.
 
-*The code below works in an interactive R session, but not with
-markdown. Markdown makes a clean environment when knitting. I haven’t
-been able to figure out why this messes with the grid.arrange()*
-
     plot <- plot_predictions(predictions=predictions,
                      outcomes=outcomes,
                      id="id",
@@ -314,3 +310,60 @@ been able to figure out why this messes with the grid.arrange()*
     grid.arrange(plot)
 
 &lt;Add later: ROC-AUC and calibration plots.&gt;
+
+### Debugging the fitting process
+
+When you are handling many longitudinal outcomes, a single failure can
+cause the entire `mmm_model()` to fail. If this is the case a more
+modular approach is desirable to help debugging. To do so, you can use
+the `get_mmm_start_values()`, `get_mmm_derivatives()`, and
+`average_pairwise_models()` instead of the `mmm_model()`. The
+`mmm_model()` is only wrapper function. If an error is caught by
+`get_mmm_start_values`, a message is returned as a place holder instead
+of a fitted model object.
+
+    start_values <- get_mmm_start_values(fixed = fixed_nofail,
+                                         random = random,
+                                         stacked_data = df_nofail_stacked,
+                                         pairs = pairs,
+                                         model_families = model_info,
+                                         iter_EM = 100,
+                                         iter_qN_outer = 30,nAGQ = 11)
+
+After debugging the placeholder can be swapped out with a fitted model
+as follows:
+
+    m <- 3
+    start_values[[m]] <- unlist(
+      get_mmm_start_values(fixed = fixed_nofail,
+                                         random = random,
+                                         stacked_data = df_nofail_stacked,
+                                         pairs = matrix(pairs[m,], ncol=2, nrow=1),
+                                         model_families = list(families = model_info$families[m], indicators = model_info$indicators[[m]]),
+                                         iter_EM = 100,
+                                         iter_qN_outer = 30,
+                                         nAGQ = 11),
+      recursive=FALSE)
+
+Next derivatives can be obtained:
+
+    suppressWarnings(
+    derivatives <- get_mmm_derivatives(stacked_data = df_nofail_stacked, 
+                                       id = "id", 
+                                       fixed = fixed_nofail, 
+                                       random = random, 
+                                       pairs = pairs, 
+                                       model_families = model_info, 
+                                       start_values = start_values, 
+                                       nAGQ = 11)
+    )
+
+The final model is composed as follows:
+
+    model_nofail <- average_pairwise_models(
+      pairs = pairs,
+      model_families = model_info,
+      start_values = start_values,
+      derivatives = derivatives,
+      data = df_nofail,
+      id = "id")

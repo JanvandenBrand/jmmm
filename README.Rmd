@@ -133,9 +133,9 @@ model_info <- test_input_datatypes(data = df, pairs = pairs)
 Next, we unroll the outcomes matrices of the pairwise combinations of markers into a single outcome vector.
 
 ```{r stack_data}
-df_fail <- df %>% filter(failure == 1)
+df_fail <- df %>% dplyr::filter(failure == 1)
 df_fail_stacked <- stack_data(data = df_fail, id = "id", pairs = pairs, covars = c("time", "sex", "time_failure"))
-df_nofail <- df %>% filter(failure == 0)
+df_nofail <- df %>% dplyr::filter(failure == 0)
 df_nofail_stacked <- stack_data(data = df_nofail, id = "id", pairs = pairs, covars = c("time", "sex"))
 ```
 
@@ -192,7 +192,6 @@ model_fail <- mmm_model(fixed = fixed_fail,
                         nAGQ = 11)
 ```
 
-
 ### Generate predictions
 After the multivariate mixed model has been fitted the mmm_predictions() function is used to generate predicted probabilities of the event of interest at various prediction landmarks. First we need to generate priors though. In addition, the helper function `get_outcome_type` is used to be able to generate appropriate predictions and plots.
 
@@ -236,7 +235,6 @@ predictions <- mmm_predictions(data=df,
 ### Plot predictions
 The following example shows the predictions for a single subject. This helps communicate forecasts of the probability of an event conditional on the evolution of longitudinal data. At present the function can only be used to plot data for a single subject. However it can generate a list of grobs for predictions generated at different landmark times.
 
-_The code below works in an interactive R session, but not with markdown. Markdown makes a clean environment when knitting. I haven't been able to figure out why this messes with the grid.arrange()_ 
 ```
 plot <- plot_predictions(predictions=predictions,
                  outcomes=outcomes,
@@ -248,3 +246,59 @@ grid.arrange(plot)
 ``` 
 
 <Add later: ROC-AUC and calibration plots.>
+
+### Debugging the fitting process
+When you are handling many longitudinal outcomes, a single failure can cause the entire `mmm_model()` to fail. If this is the case a more modular approach is desirable to help debugging. To do so, you can use the `get_mmm_start_values()`, `get_mmm_derivatives()`, and `average_pairwise_models()` instead of the `mmm_model()`. The `mmm_model()` is only wrapper function. If an error is caught by `get_mmm_start_values`, a message is returned as a place holder instead of a fitted model object.
+
+```
+start_values <- get_mmm_start_values(fixed = fixed_nofail,
+                                     random = random,
+                                     stacked_data = df_nofail_stacked,
+                                     pairs = pairs,
+                                     model_families = model_info,
+                                     iter_EM = 100,
+                                     iter_qN_outer = 30,nAGQ = 11)
+```
+
+After debugging the placeholder can be swapped out with a fitted model as follows:
+
+```
+m <- 3
+start_values[[m]] <- unlist(
+  get_mmm_start_values(fixed = fixed_nofail,
+                                     random = random,
+                                     stacked_data = df_nofail_stacked,
+                                     pairs = matrix(pairs[m,], ncol=2, nrow=1),
+                                     model_families = list(families = model_info$families[m], indicators = model_info$indicators[[m]]),
+                                     iter_EM = 100,
+                                     iter_qN_outer = 30,
+                                     nAGQ = 11),
+  recursive=FALSE)
+```
+
+Next derivatives can be obtained:
+
+```
+suppressWarnings(
+derivatives <- get_mmm_derivatives(stacked_data = df_nofail_stacked, 
+                                   id = "id", 
+                                   fixed = fixed_nofail, 
+                                   random = random, 
+                                   pairs = pairs, 
+                                   model_families = model_info, 
+                                   start_values = start_values, 
+                                   nAGQ = 11)
+)
+```
+
+The final model is composed as follows:
+
+```
+model_nofail <- average_pairwise_models(
+  pairs = pairs,
+  model_families = model_info,
+  start_values = start_values,
+  derivatives = derivatives,
+  data = df_nofail,
+  id = "id")
+```
